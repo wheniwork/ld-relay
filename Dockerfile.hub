@@ -1,8 +1,24 @@
-FROM golang:1.8.4 as builder
-WORKDIR /go/src/github.com/launchdarkly/ld-relay/
-COPY . /go/src/github.com/launchdarkly/ld-relay/
-RUN go get github.com/tools/godep
-RUN CGO_ENABLED=0 GOOS=linux godep go build -a -installsuffix cgo -o ldr
+FROM alpine:3.6 as builder
+
+RUN apk --no-cache add \
+    go \
+    libc-dev \
+ && rm -rf /var/cache/apk/*
+
+RUN mkdir -p /go/src/github.com/launchdarkly/ld-relay
+
+WORKDIR /go/src/github.com/launchdarkly/ld-relay
+
+COPY . .
+
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+ENV GOPATH=/go
+ENV LD_VERSION=3.0.2
+
+RUN go build -a -installsuffix cgo -o ldr -ldflags="-X main.VERSION=$LD_VERSION"
+
+CMD ["/bin/true"]
 
 FROM alpine:3.6
 
