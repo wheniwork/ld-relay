@@ -1,26 +1,25 @@
-FROM alpine:3.6 as builder
+FROM golang:1.10.3-alpine as builder
 
 RUN apk --no-cache add \
-    go \
     libc-dev \
  && rm -rf /var/cache/apk/*
 
-RUN mkdir -p /go/src/github.com/launchdarkly/ld-relay
+ARG SRC_DIR=/go/src/gopkg.in/launchdarkly/ld-relay.v5
 
-WORKDIR /go/src/github.com/launchdarkly/ld-relay
+RUN mkdir -p $SRC_DIR
+
+WORKDIR $SRC_DIR
 
 COPY . .
 
 ENV CGO_ENABLED=0
 ENV GOOS=linux
 ENV GOPATH=/go
-ENV LD_VERSION=3.0.2
+ENV LD_VERSION=5.3.1
 
-RUN go build -a -installsuffix cgo -o ldr -ldflags="-X main.VERSION=$LD_VERSION"
+RUN go build -a -o ldr -ldflags="-X main.VERSION=$LD_VERSION" ./cmd/ld-relay
 
-CMD ["/bin/true"]
-
-FROM alpine:3.6
+FROM alpine:3.7
 
 RUN apk add --no-cache \
     curl \
@@ -28,7 +27,10 @@ RUN apk add --no-cache \
  && update-ca-certificates \
  && rm -rf /var/cache/apk/*
 
-COPY --from=builder /go/src/github.com/launchdarkly/ld-relay/ldr /usr/bin/
+ARG SRC_DIR=/go/src/gopkg.in/launchdarkly/ld-relay.v5
+
+COPY --from=builder ${SRC_DIR}/ldr /usr/bin/ldr
+
 COPY docker-entrypoint.sh /usr/bin/
 
 ENTRYPOINT ["docker-entrypoint.sh"]
